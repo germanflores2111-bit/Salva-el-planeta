@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dino Superman: MODO IMPOSIBLE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 16px;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 10;
+            font-weight: bold;
+        }
+        
+        #ui div {
+            margin: 5px 0;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 2px solid #fff;
+        }
+        
+        #combo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ffe66d;
+            text-shadow: 3px 3px 0 #e74c3c;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 15;
+            font-weight: bold;
+        }
+        
+        #warning {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            color: #e74c3c;
+            text-shadow: 0 0 20px #e74c3c;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 15;
+            font-weight: bold;
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        #startScreen, #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            text-align: center;
+        }
+        
+        #gameOver {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 42px;
+            color: #e74c3c;
+            text-shadow: 0 0 30px #e74c3c;
+            margin-bottom: 20px;
+            animation: glitch 2s infinite;
+        }
+        
+        @keyframes glitch {
+            0%, 90%, 100% { text-shadow: 0 0 30px #e74c3c; }
+            92% { text-shadow: -5px 0 #0ff, 5px 0 #f00; }
+            94% { text-shadow: 5px 0 #0ff, -5px 0 #f00; }
+            96% { text-shadow: 0 0 30px #e74c3c; }
+        }
+        
+        .difficulty-badge {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            margin: 10px 0;
+            border: 3px solid #fff;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+        
+        .stats-box {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 20px 50px;
+            font-size: 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #962d22, 0 0 30px rgba(231, 76, 60, 0.5);
+            transition: transform 0.1s;
+        }
+        
+        button:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #962d22, 0 0 30px rgba(231, 76, 60, 0.5);
+        }
+        
+        .instruction {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #bbb;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+        
+        .danger-text {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        #leaderboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e74c3c;
+            color: white;
+            font-size: 14px;
+            z-index: 10;
+            max-width: 150px;
+        }
+        
+        #leaderboard h3 {
+            color: #e74c3c;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .record {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>🔥 RONDA: <span id="level">1</span></div>
+        <div>💯 PUNTOS: <span id="score">0</span></div>
+        <div>❤️ VIDAS: <span id="lives">3</span></div>
+        <div>⚡ COMBO: x<span id="comboCount">1</span></div>
+        <div>🎯 PRECISIÓN: <span id="accuracy">100</span>%</div>
+    </div>
+    
+    <div id="combo">COMBO x<span id="comboDisplay">5</span>!</div>
+    <div id="warning">⚠️ ¡OLEADA! ⚠️</div>
+    
+    <div id="leaderboard">
+        <h3>🏆 RÉCORDS</h3>
+        <div id="recordsList">
+            <div class="record"><span>1.</span> <span>---</span></div>
+            <div class="record"><span>2.</span> <span>---</span></div>
+            <div class="record"><span>3.</span> <span>---</span></div>
+        </div>
+    </div>
+    
+    <div id="startScreen">
+        <h1>☄️ DINO EXTINCIÓN ☄️</h1>
+        <div class="difficulty-badge">MODO IMPOSIBLE</div>
+        <div class="instruction">
+            <span class="danger-text">ADVERTENCIA:</span> Este juego está diseñado para ser brutalmente difícil.
+        </div>
+        <div class="instruction">
+            • Los meteoritos son <span class="danger-text">MÁS RÁPIDOS</span><br>
+            • Caen en <span class="danger-text">PATRONES</span><br>
+            • Tienes <span class="danger-text">3 SEGUNDOS</span> de gracia al inicio<br>
+            • Falla un toque = <span class="danger-text">PENALIZACIÓN</span>
+        </div>
+        <button id="startBtn">SOBREVIVIR</button>
+    </div>
+    
+    <div id="gameOver">
+        <h1>EXTINTO</h1>
+        <div class="stats-box">
+            <div class="stat-row">
+                <span>Ronda Final:</span>
+                <span id="finalLevel">1</span>
+            </div>
+            <div class="stat-row">
+                <span>Puntuación:</span>
+                <span id="finalScore">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Meteoritos Destruidos:</span>
+                <span id="finalMeteors">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Precisión:</span>
+                <span id="finalAccuracy">0%</span>
+            </div>
+        </div>
+        <button id="restartBtn">REINTENTAR</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Variables del juego hardcore
+        let gameRunning = false;
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let meteors = [];
+        let particles = [];
+        let buildings = [];
+        let stars = [];
+        
+        // Sistema de combo y precisión
+        let combo = 1;
+        let comboTimer = 0;
+        let meteorsDestroyed = 0;
+        let totalClicks = 0;
+        let successfulClicks = 0;
+        let missPenalty = false;
+        
+        // Dificultad progresiva agresiva
+        let baseSpawnRate = 1500;
+        let spawnRate = baseSpawnRate;
+        let lastSpawn = 0;
+        let baseSpeed = 3;
+        let meteorSpeed = baseSpeed;
+        let waveActive = false;
+        let waveTimer = 0;
+        let gameTime = 0;
+        let gracePeriod = 3000; // 3 segundos al inicio
+        
+        // Dinosaurio
+        const dino = {
+            x: 0,
+            y: 0,
+            width: 60,
+            height: 60,
+            capeWave: 0,
+            isHit: false,
+            hitTimer: 0
+        };
+        
+        // Records locales
+        let records = JSON.parse(localStorage.getItem('dinoRecords')) || [];
+        
+        // Inicializar estrellas de fondo
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speed: Math.random() * 0.5 + 0.1
+                });
+            }
+        }
+        
+        // Inicializar edificios
+        function initBuildings() {
+            buildings = [];
+            let x = 0;
+            while (x < canvas.width + 200) {
+                const height = 120 + Math.random() * 180;
+                buildings.push({
+                    x: x,
+                    width: 50 + Math.random() * 60,
+                    height: height,
+                    color: `hsl(${220 + Math.random() * 30}, 20%, ${8 + Math.random() * 7}%)`,
+                    windows: generateWindows(x, height, 50 + Math.random() * 60)
+                });
+                x += 60 + Math.random() * 50;
+            }
+        }
+        
+        function generateWindows(bx, bh, bw) {
+            const windows = [];
+            for (let wy = canvas.height - bh + 20; wy < canvas.height - 70; wy += 30) {
+                for (let wx = bx + 8; wx < bx + bw - 8; wx += 18) {
+                    if (Math.random() > 0.4) {
+                        windows.push({x: wx, y: wy, lit: Math.random() > 0.3});
+                    }
+                }
+            }
+            return windows;
+        }
+        
+        // Clase Meteorito MEJORADA
+        class Meteor {
+            constructor(isWave = false) {
+                this.type = Math.random();
+                this.radius = 15 + Math.random() * 15;
+                
+                // Tipos de meteoritos
+                if (this.type > 0.8) {
+                    this.kind = 'FAST'; // Rápido y pequeño
+                    this.radius = 12;
+                    this.speed = meteorSpeed * 1.8;
+                    this.color = '#0ff';
+                    this.emoji = '⚡';
+                } else if (this.type > 0.6) {
+                    this.kind = 'HEAVY'; // Lento pero grande
+                    this.radius = 30;
+                    this.speed = meteorSpeed * 0.7;
+                    this.color = '#e74c3c';
+                    this.emoji = '☄️';
+                } else if (this.type > 0.9 && level > 5) {
+                    this.kind = 'ZIGZAG'; // Se mueve lateralmente
+                    this.radius = 20;
+                    this.speed = meteorSpeed * 1.2;
+                    this.zigzagOffset = 0;
+                    this.zigzagSpeed = Math.random() > 0.5 ? 2 : -2;
+                    this.color = '#f39c12';
+                    this.emoji = '🌀';
+                } else {
+                    this.kind = 'NORMAL';
+                    this.speed = meteorSpeed + Math.random();
+                    this.color = '#ff6b6b';
+                    this.emoji = '🔥';
+                }
+                
+                // Spawn en patrones si es oleada
+                if (isWave) {
+                    this.x = (canvas.width / 5) * (Math.floor(Math.random() * 5) + 0.5);
+                } else {
+                    this.x = Math.random() * (canvas.width - 60) + 30;
+                }
+                
+                this.y = -50;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.15;
+                this.hit = false;
+                this.trail = [];
+            }
+            
+            update() {
+                // Movimiento especial zigzag
+                if (this.kind === 'ZIGZAG') {
+                    this.zigzagOffset += this.zigzagSpeed;
+                    this.x += Math.sin(this.zigzagOffset * 0.1) * 3;
+                }
+                
+                // Mantener dentro de pantalla
+                if (this.x < this.radius) this.x = this.radius;
+                if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
+                
+                this.y += this.speed;
+                this.rotation += this.rotationSpeed;
+                
+                // Trail de fuego
+                this.trail.push({x: this.x, y: this.y, life: 1});
+                this.trail = this.trail.filter(t => {
+                    t.life -= 0.1;
+                    return t.life > 0;
+                });
+                
+                // Si toca el suelo
+                if (this.y > canvas.height - 80) {
+                    this.explode(true);
+                    lives--;
+                    combo = 1; // Reset combo
+                    updateUI();
+                    if (lives <= 0) gameOver();
+                    return false;
+                }
+                return !this.hit;
+            }
+            
+            draw() {
+                // Dibujar trail
+                this.trail.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = t.life * 0.5;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, this.radius * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                // Aura de peligro
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 25;
+                
+                ctx.font = `${this.radius * 2.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, 0, 0);
+                
+                // Indicador de tipo
+                if (this.kind === 'FAST') {
+                    ctx.fillStyle = '#0ff';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('⚡', 0, -this.radius - 10);
+                }
+                
+                ctx.restore();
+            }
+            
+            explode(ground = false) {
+                const particleCount = ground ? 30 : 15;
+                const color = ground ? '#e74c3c' : this.color;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = (Math.PI * 2 / particleCount) * i;
+                    const speed = ground ? Math.random() * 8 : 3 + Math.random() * 4;
+                    particles.push(new Particle(this.x, this.y, color, angle, speed));
+                }
+                
+                // Screen shake si toca suelo
+                if (ground) {
+                    canvas.style.transform = `translate(${Math.random()*10-5}px, ${Math.random()*10-5}px)`;
+                    setTimeout(() => canvas.style.transform = 'none', 200);
+                }
+            }
+            
+            checkClick(x, y) {
+                const dist = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2);
+                // Hitbox más estricta
+                if (dist < this.radius + 20) {
+                    this.hit = true;
+                    this.explode();
+                    
+                    // Sistema de combo
+                    meteorsDestroyed++;
+                    combo = Math.min(combo + 1, 10);
+                    comboTimer = 120; // 2 segundos a 60fps
+                    
+                    // Puntos con combo
+                    const points = 10 * combo;
+                    score += points;
+                    
+                    // Mostrar combo
+                    if (combo > 1) {
+                        showCombo();
+                    }
+                    
+                    // Subir nivel cada 150 puntos (más difícil que antes)
+                    if (score > level * 150) {
+                        levelUp();
+                    }
+                    
+                    updateUI();
+                    return true;
+                }
+                return false;
+            }
+        }
+        
+        // Partículas mejoradas
+        class Particle {
+            constructor(x, y, color, angle = null, speed = null) {
+                this.x = x;
+                this.y = y;
+                if (angle !== null && speed !== null) {
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                } else {
+                    this.vx = (Math.random() - 0.5) * 12;
+                    this.vy = (Math.random() - 0.5) * 12;
+                }
+                this.life = 1;
+                this.color = color;
+                this.size = 2 + Math.random() * 6;
+                this.gravity = 0.2;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= 0.025;
+                return this.life > 0;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        // Mostrar combo en pantalla
+        function showCombo() {
+            const comboEl = document.getElementById('combo');
+            const comboDisplay = document.getElementById('comboDisplay');
+            comboDisplay.textContent = combo;
+            comboEl.style.opacity = '1';
+            comboEl.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            
+            setTimeout(() => {
+                comboEl.style.opacity = '0';
+                comboEl.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 800);
+        }
+        
+        // Subir de nivel (más difícil)
+        function levelUp() {
+            level++;
+            
+            // Dificultad exponencial
+            spawnRate = Math.max(400, baseSpawnRate - (level * 120));
+            meteorSpeed = baseSpeed + (level * 0.4);
+            
+            // Cada 3 niveles: OLEADA
+            if (level % 3 === 0) {
+                startWave();
+            }
+            
+            // Dino parpadea verde
+            dino.isHit = true;
+            dino.hitTimer = 30;
+        }
+        
+        // Sistema de oleadas
+        function startWave() {
+            waveActive = true;
+            waveTimer = 180; // 3 segundos de oleada
+            
+            const warning = document.getElementById('warning');
+            warning.style.opacity = '1';
+            
+            // Spawn masivo
+            for (let i = 0; i < 5 + level; i++) {
+        
